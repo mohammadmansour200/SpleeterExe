@@ -1,6 +1,6 @@
 # SpleeterExe
 
-A C++ application for source separation using a TensorFlow model (Spleeter 2stems) originally created for (Basset)[https://github.com/mohammadmansour200/basset]. This tool processes PCM audio files, extracting vocals from them.
+A C++ application for source separation using a TensorFlow model (Spleeter 2stems) originally created for [Basset](https://github.com/mohammadmansour200/basset). This tool processes PCM audio files, extracting vocals from them.
 
 ## Features
 
@@ -13,7 +13,11 @@ A C++ application for source separation using a TensorFlow model (Spleeter 2stem
 
 - C++17 compatible compiler (e.g., g++, MSVC)
 - CMake >= 3.15 (for CMake build)
-- TensorFlow C library (provided in `third_party/tensorflow-cpu`)
+- TensorFlow C library 1.15 (provided in `third_party/tensorflow-cpu`)
+
+> Linux http://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-1.15.0.tar.gz
+
+> Windows http://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-windows-x86_64-1.15.0.zip
 
 ## File Structure
 
