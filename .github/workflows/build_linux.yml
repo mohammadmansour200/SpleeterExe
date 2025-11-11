@@ -1,0 +1,123 @@
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-ubuntu-18-04:
+    name: Build in ubuntu:18.04 container (older glibc)
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:18.04
+    outputs:
+      asset-path: ${{ steps.package.outputs.asset }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential ca-certificates curl tar gzip file \
+            gcc g++ make pkg-config
+
+      - name: Show glibc version
+        run: |
+          /usr/bin/ldd --version | head -n1
+
+      - name: Build with make
+        env:
+          MAKEFLAGS: -j$(nproc)
+        run: |
+          set -euo pipefail
+          MAKE_TARGET="${MAKE_TARGET:-release}"
+          echo "Running: make $MAKE_TARGET"
+          make $MAKE_TARGET
+
+      - name: Package artifacts
+        id: package
+        run: |
+          set -euo pipefail
+          mkdir -p release
+
+          # Prefer dist/ if present
+          if [ -d "dist" ] && [ "$(ls -A dist)" ]; then
+            TAR_NAME="${{ github.repository }}-linux-x86_64-ubuntu18.04.tar.gz"
+            tar -C dist -czf "release/$TAR_NAME" .
+            echo "Created release/$TAR_NAME"
+            echo "asset=release/$TAR_NAME" >> "$GITHUB_OUTPUT"
+            echo "name=$TAR_NAME" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Otherwise collect executable files (avoid .git and release dir)
+          mapfile -t bins < <(find . -maxdepth 3 -type f -executable -not -path "./.git/*" -not -path "./release/*" -print)
+          if [ "${#bins[@]}" -gt 0 ]; then
+            TAR_NAME="${{ github.repository }}-linux-x86_64-ubuntu18.04.tar.gz"
+            tar -czf "release/$TAR_NAME" "${bins[@]}"
+            echo "Created release/$TAR_NAME with executables: ${bins[*]}"
+            echo "asset=release/$TAR_NAME" >> "$GITHUB_OUTPUT"
+            echo "name=$TAR_NAME" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "No artifacts found in dist/ and no executables detected; aborting." >&2
+          exit 1
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-ubuntu18-release
+          path: release/*.tar.gz
+
+  publish:
+    name: Publish Linux-only Release
+    needs: build-ubuntu-18-04
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-ubuntu18-release
+          path: release
+
+      - name: Find release asset path
+        id: find_asset
+        run: |
+          set -euo pipefail
+          asset=$(ls release/*.tar.gz | head -n1)
+          if [ -z "$asset" ]; then
+            echo "No asset found" >&2
+            exit 1
+          fi
+          filename=$(basename "$asset")
+          echo "Found asset: $asset"
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+          echo "name=$filename" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release (Linux ubuntu18.04)
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }} (Linux ubuntu18.04)
+          body: Auto-generated Linux release built inside ubuntu:18.04
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.find_asset.outputs.asset }}
+          asset_name: ${{ steps.find_asset.outputs.name }}
+          asset_content_type: application/gzip
+          token: ${{ secrets.GITHUB_TOKEN }}
