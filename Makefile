@@ -4,7 +4,7 @@ LDFLAGS = -static-libstdc++ -static-libgcc -L./third_party/tensorflow-cpu/lib -l
           -static-libstdc++ -static-libgcc \
 	  -Wl,-rpath='$$ORIGIN' -Wl,-rpath='/usr/lib/Basset'
 
-VERSION = 0.1.0
+VERSION = 0..0
 BUILD_DIR = build
 SRC_DIR = src
 
@@ -19,11 +19,6 @@ $(TARGET): $(SOURCES)
 
 clean:
 	rm -rf $(BUILD_DIR)
-
-install:
-	cp ./third_party/tensorflow-cpu/lib/libtensorflow.so $(BUILD_DIR)/libtensorflow.so.1
-	cp ./third_party/tensorflow-cpu/lib/libtensorflow_framework.so $(BUILD_DIR)/libtensorflow_framework.so.1
-	cp -r ./models $(BUILD_DIR)/
 
 package:
 	tar -czf SpleeterExe_$(VERSION).tar.gz -C $(BUILD_DIR) .
