@@ -20,11 +20,6 @@ $(TARGET): $(SOURCES)
 clean:
 	rm -rf $(BUILD_DIR)
 
-install:
-	cp ./third_party/tensorflow-cpu/lib/libtensorflow.so $(BUILD_DIR)/libtensorflow.so.1
-	cp ./third_party/tensorflow-cpu/lib/libtensorflow_framework.so $(BUILD_DIR)/libtensorflow_framework.so.1
-	cp -r ./models $(BUILD_DIR)/
-
 package:
 	tar -czf SpleeterExe_$(VERSION).tar.gz -C $(BUILD_DIR) .
 
